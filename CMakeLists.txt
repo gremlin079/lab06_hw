@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(lab03_homework)
+project(lab06_homework)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
