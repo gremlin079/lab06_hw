@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  linux-build:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -18,31 +18,104 @@ jobs:
         fetch-depth: 0
     
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake g++ libgtest-dev
-    
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++ libgtest-dev rpm
+        
     - name: Configure CMake
-      run: cmake -S . -B build
+      run: cmake -S . -B build -DCPACK_GENERATOR="DEB;RPM"
     
     - name: Build
       run: cmake --build build
     
-    - name: Create deb package
+    - name: Create packages (DEB, RPM)
       working-directory: ${{github.workspace}}/build
-      run: cpack -G DEB
+      run: cpack
     
-    - name: Upload deb package
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: observer-pattern-deb
-        path: build/*.deb
+        name: linux-packages
+        path: build/*.deb build/*.rpm
         if-no-files-found: error
+
+  windows-build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies (CMake, NSIS)
+      run: choco install cmake nsis -y
+    
+    - name: Configure CMake
+      run: cmake -S . -B build -DCPACK_GENERATOR="NSIS"
+    
+    - name: Build
+      run: cmake --build build
+    
+    - name: Create MSI package
+      working-directory: ${{github.workspace}}/build
+      run: cpack
+    
+    - name: Upload MSI
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-package
+        path: build/*.msi
+        if-no-files-found: error
+
+  macos-build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: brew install cmake gtest
+    
+    - name: Configure CMake
+      run: cmake -S . -B build -DCPACK_GENERATOR="Bundle"
+    
+    - name: Build
+      run: cmake --build build
+    
+    - name: Create DMG package
+      working-directory: ${{github.workspace}}/build
+      run: cpack
+    
+    - name: Upload DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-package
+        path: build/*.dmg
+        if-no-files-found: error
+
+  create-release:
+    needs: [linux-build, windows-build, macos-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: linux-packages
+        path: artifacts/linux
+    - uses: actions/download-artifact@v4
+      with:
+        name: windows-package
+        path: artifacts/windows
+    - uses: actions/download-artifact@v4
+      with:
+        name: macos-package
+        path: artifacts/macos
     
     - name: Create Release
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
-        files: build/*.deb
+        files: |
+          artifacts/linux/*.deb
+          artifacts/linux/*.rpm
+          artifacts/windows/*.msi
+          artifacts/macos/*.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
