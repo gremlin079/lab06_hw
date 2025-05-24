@@ -104,7 +104,6 @@ jobs:
         fi
         
         if [ ! -f "icon.icns" ]; then
-          echo "Creating placeholder icon.icns"
           mkdir -p tmp.iconset
           sips -z 16 16 -s format png /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns --out tmp.iconset/icon_16x16.png || true
           sips -z 32 32 -s format png /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns --out tmp.iconset/icon_16x16@2x.png || true
@@ -162,12 +161,6 @@ jobs:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
         files: |
-          artifacts/linux/*.deb
-          artifacts/linux/*.rpm
-          artifacts/windows/*.exe
-          artifacts/macos/*.dmg
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           artifacts/linux/*.deb
           artifacts/linux/*.rpm
           artifacts/windows/*.exe
