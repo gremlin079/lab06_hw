@@ -37,7 +37,8 @@ jobs:
     - name: Create packages
       working-directory: ${{github.workspace}}/build
       run: |
-        cpack -G DEB -G RPM
+        cpack -G DEB && mv *.deb solver.deb
+        cpack -G RPM && mv *.rpm solver.rpm
         ls -la *.deb *.rpm || echo "No packages created"
       
     - name: Upload artifacts
@@ -45,8 +46,8 @@ jobs:
       with:
         name: linux-packages
         path: |
-          build/*.deb
-          build/*.rpm
+          build/solver.deb
+          build/solver.rpm
         if-no-files-found: error
         retention-days: 5
 
@@ -59,7 +60,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       
     - name: Install dependencies
-      run: choco install cmake nsis -y
+      run: choco install cmake nsis wixtoolset -y
     
     - name: Configure CMake
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -74,14 +75,17 @@ jobs:
     - name: Create package
       working-directory: ${{github.workspace}}/build
       run: |
-        cpack -G NSIS
-        Get-ChildItem *.exe | Format-List || Write-Output "No package created"
+        cpack -G NSIS && mv *.exe solver-setup.exe
+        cpack -G WIX && mv *.msi solver.msi
+        Get-ChildItem *.exe,*.msi | Format-List || Write-Output "No packages created"
       
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-package
-        path: build/*.exe
+        path: |
+          build/solver-setup.exe
+          build/solver.msi
         if-no-files-found: error
         retention-days: 5
 
@@ -151,8 +155,27 @@ jobs:
         if-no-files-found: error
         retention-days: 5
 
+  source-archives:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Prepare source archives
+      run: |
+        git archive --format=zip -o source.zip HEAD
+        git archive --format=tar.gz -o source.tar.gz HEAD
+    
+    - name: Upload source archives
+      uses: actions/upload-artifact@v4
+      with:
+        name: source-archives
+        path: |
+          source.zip
+          source.tar.gz
+        retention-days: 5
+
   create-release:
-    needs: [linux-build, windows-build, macos-build]
+    needs: [linux-build, windows-build, macos-build, source-archives]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -161,7 +184,6 @@ jobs:
       with:
         name: linux-packages
         path: artifacts/linux
-        merge-multiple: true
     
     - name: Download Windows artifacts
       uses: actions/download-artifact@v4
@@ -175,6 +197,12 @@ jobs:
         name: macos-package
         path: artifacts/macos
     
+    - name: Download source archives
+      uses: actions/download-artifact@v4
+      with:
+        name: source-archives
+        path: artifacts/source
+    
     - name: Verify artifacts
       run: |
         echo "Linux artifacts:"
@@ -183,8 +211,11 @@ jobs:
         ls -la artifacts/windows || echo "No Windows artifacts"
         echo "macOS artifacts:"
         ls -la artifacts/macos || echo "No macOS artifacts"
+        echo "Source archives:"
+        ls -la artifacts/source || echo "No source archives"
     
     - name: Create Release
+      if: success() && (exists('artifacts/linux') || exists('artifacts/windows') || exists('artifacts/macos')) && exists('artifacts/source')
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
@@ -193,5 +224,6 @@ jobs:
           artifacts/linux/*
           artifacts/windows/*
           artifacts/macos/*
+          artifacts/source/*
       env:
         GITHUB_TOKEN: ${{ secrets.GH_PAT }}
