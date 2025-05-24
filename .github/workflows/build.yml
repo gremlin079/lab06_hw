@@ -184,48 +184,14 @@ jobs:
         echo "macOS artifacts:"
         ls -la artifacts/macos || echo "No macOS artifacts"
     
-    create-release:
-  needs: [linux-build, windows-build, macos-build]
-  if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
-  runs-on: ubuntu-latest
-  steps:
-  - name: Download Linux artifacts
-    uses: actions/download-artifact@v4
-    with:
-      name: linux-packages
-      path: artifacts/linux
-      merge-multiple: true
-
-  - name: Download Windows artifacts
-    uses: actions/download-artifact@v4
-    with:
-      name: windows-package
-      path: artifacts/windows
-
-  - name: Download macOS artifacts
-    uses: actions/download-artifact@v4
-    with:
-      name: macos-package
-      path: artifacts/macos
-
-  - name: Verify artifacts
-    run: |
-      echo "Linux artifacts:"
-      ls -la artifacts/linux || echo "No Linux artifacts"
-      echo "Windows artifacts:"
-      ls -la artifacts/windows || echo "No Windows artifacts"
-      echo "macOS artifacts:"
-      ls -la artifacts/macos || echo "No macOS artifacts"
-
-  - name: Create Release
-    uses: softprops/action-gh-release@v2
-    with:
-      tag_name: v${{ github.run_number }}
-      name: Release v${{ github.run_number }}
-      files: |
-        artifacts/linux/*
-        artifacts/windows/*
-        artifacts/macos/*
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        files: |
+          artifacts/linux/*
+          artifacts/windows/*
+          artifacts/macos/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
