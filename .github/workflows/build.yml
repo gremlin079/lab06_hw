@@ -215,8 +215,8 @@ jobs:
         ls -la artifacts/source || echo "No source archives"
     
     - name: Create Release
-      if: success() && (exists('artifacts/linux') || exists('artifacts/windows') || exists('artifacts/macos')) && exists('artifacts/source')
-      uses: softprops/action-gh-release@v2
+      if: success()
+      uses: softprops/action-gh-release@v2x
       with:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
