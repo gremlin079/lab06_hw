@@ -36,13 +36,19 @@ jobs:
       
     - name: Create packages
       working-directory: ${{github.workspace}}/build
-      run: cpack -G DEB -G RPM
+      run: |
+        cpack -G DEB -G RPM
+        ls -la *.deb *.rpm || echo "No packages created"
       
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: linux-packages
-        path: build/*.deb build/*.rpm
+        path: |
+          build/*.deb
+          build/*.rpm
+        if-no-files-found: error
+        retention-days: 5
 
   windows-build:
     runs-on: windows-latest
@@ -67,13 +73,17 @@ jobs:
       
     - name: Create package
       working-directory: ${{github.workspace}}/build
-      run: cpack -G NSIS
+      run: |
+        cpack -G NSIS
+        ls -la *.exe || echo "No package created"
       
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-package
         path: build/*.exe
+        if-no-files-found: error
+        retention-days: 5
 
   macos-build:
     runs-on: macos-latest
@@ -129,41 +139,60 @@ jobs:
     
     - name: Create package
       working-directory: ${{github.workspace}}/build
-      run: cpack -G Bundle
+      run: |
+        cpack -G Bundle
+        ls -la *.dmg || echo "No package created"
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-package
         path: build/*.dmg
+        if-no-files-found: error
+        retention-days: 5
 
   create-release:
     needs: [linux-build, windows-build, macos-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v4
+    - name: Download Linux artifacts
+      uses: actions/download-artifact@v4
       with:
         name: linux-packages
         path: artifacts/linux
-    - uses: actions/download-artifact@v4
+        merge-multiple: true
+    
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v4
       with:
         name: windows-package
         path: artifacts/windows
-    - uses: actions/download-artifact@v4
+    
+    - name: Download macOS artifacts
+      uses: actions/download-artifact@v4
       with:
         name: macos-package
         path: artifacts/macos
     
+    - name: Verify artifacts
+      run: |
+        echo "Linux artifacts:"
+        ls -la artifacts/linux || echo "No Linux artifacts"
+        echo "Windows artifacts:"
+        ls -la artifacts/windows || echo "No Windows artifacts"
+        echo "macOS artifacts:"
+        ls -la artifacts/macos || echo "No macOS artifacts"
+    
     - name: Create Release
+      if: success() && (exists('artifacts/linux') || exists('artifacts/windows') || exists('artifacts/macos')
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
         files: |
-          artifacts/linux/*.deb
-          artifacts/linux/*.rpm
-          artifacts/windows/*.exe
-          artifacts/macos/*.dmg
+          artifacts/linux/*
+          artifacts/windows/*
+          artifacts/macos/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
