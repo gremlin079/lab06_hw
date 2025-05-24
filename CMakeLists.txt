@@ -53,11 +53,15 @@ if(APPLE)
     set(CPACK_GENERATOR "Bundle")
     set(CPACK_BUNDLE_NAME "Solver")
     set(CPACK_BUNDLE_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
-    set(CPACK_BUNDLE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")  # Опционально
-    set(CPACK_BUNDLE_STARTUP_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/startup.sh")  # Опционально
     
-    install(TARGETS solver
-            BUNDLE DESTINATION "."
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
+        set(CPACK_BUNDLE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
+    else()
+        message(WARNING "icon.icns not found - bundle will be created without icon")
+    endif()
+
+    install(TARGETS solver hello_world
+            BUNDLE DESTINATION Applications
             COMPONENT applications)
 endif()
 
