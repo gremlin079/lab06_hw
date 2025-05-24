@@ -30,6 +30,10 @@ jobs:
     - name: Build
       run: cmake --build build --config Release --parallel 2
       
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure
+      
     - name: Create packages
       working-directory: ${{github.workspace}}/build
       run: cpack -G DEB -G RPM
@@ -57,6 +61,10 @@ jobs:
     - name: Build
       run: cmake --build build --config Release --parallel 2
       
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure
+      
     - name: Create package
       working-directory: ${{github.workspace}}/build
       run: cpack -G NSIS
@@ -68,49 +76,67 @@ jobs:
         path: build/*.exe
 
   macos-build:
-  runs-on: macos-latest
-  steps:
-  - uses: actions/checkout@v4
-  
-  - name: Create required files
-    run: |
-      if [ ! -f "Info.plist" ]; then
-        echo '<?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleExecutable</key>
-            <string>solver_app</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.yourcompany.solver</string>
-            <key>CFBundleName</key>
-            <string>Solver</string>
-            <key>CFBundleVersion</key>
-            <string>1.0.0</string>
-        </dict>
-        </plist>' > Info.plist
-      fi
-      
-      touch icon.icns || true
-  
-  - name: Install dependencies
-    run: brew install cmake googletest
-  
-  - name: Configure CMake
-    run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-  
-  - name: Build
-    run: cmake --build build --config Release
-  
-  - name: Create package
-    working-directory: ${{github.workspace}}/build
-    run: cpack -G Bundle
-  
-  - name: Upload artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: macos-package
-      path: build/*.dmg
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create required files
+      run: |
+        if [ ! -f "Info.plist" ]; then
+          echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>solver_app</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.yourcompany.solver</string>
+              <key>CFBundleName</key>
+              <string>Solver</string>
+              <key>CFBundleVersion</key>
+              <string>1.0.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+          </dict>
+          </plist>' > Info.plist
+        fi
+        
+        if [ ! -f "icon.icns" ]; then
+          echo "Creating placeholder icon.icns"
+          mkdir -p tmp.iconset
+          sips -z 16 16 -s format png /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns --out tmp.iconset/icon_16x16.png || true
+          sips -z 32 32 -s format png /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns --out tmp.iconset/icon_16x16@2x.png || true
+          iconutil -c icns tmp.iconset -o icon.icns || touch icon.icns
+          rm -rf tmp.iconset
+        fi
+    
+    - name: Install dependencies
+      run: |
+        brew install cmake googletest
+        [ -d "/opt/homebrew/include/gtest" ] && cd /opt/homebrew/include/gtest || cd /usr/local/include/gtest || true
+        [ -f "CMakeLists.txt" ] && sudo cmake CMakeLists.txt && sudo make && sudo cp *.a /usr/local/lib/ || true
+    
+    - name: Configure CMake
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    
+    - name: Build
+      run: cmake --build build --config Release --parallel 2
+    
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure
+    
+    - name: Create package
+      working-directory: ${{github.workspace}}/build
+      run: cpack -G Bundle
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-package
+        path: build/*.dmg
 
   create-release:
     needs: [linux-build, windows-build, macos-build]
@@ -136,6 +162,12 @@ jobs:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
         files: |
+          artifacts/linux/*.deb
+          artifacts/linux/*.rpm
+          artifacts/windows/*.exe
+          artifacts/macos/*.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           artifacts/linux/*.deb
           artifacts/linux/*.rpm
           artifacts/windows/*.exe
