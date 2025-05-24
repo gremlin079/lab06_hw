@@ -68,34 +68,49 @@ jobs:
         path: build/*.exe
 
   macos-build:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
+  runs-on: macos-latest
+  steps:
+  - uses: actions/checkout@v4
   
-    - name: Check required files
-      run: |
-        if [ ! -f "Info.plist" ]; then
-        echo "<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'><plist version='1.0'><dict><key>CFBundleExecutable</key><string>solver_app</string><key>CFBundleIdentifier</key><string>com.yourcompany.solver</string><key>CFBundleName</key><string>Solver</string><key>CFBundleVersion</key><string>1.0.0</string></dict></plist>" > Info.plist
-        fi
+  - name: Create required files
+    run: |
+      if [ ! -f "Info.plist" ]; then
+        echo '<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>solver_app</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.yourcompany.solver</string>
+            <key>CFBundleName</key>
+            <string>Solver</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+        </dict>
+        </plist>' > Info.plist
+      fi
+      
+      touch icon.icns || true
   
-    - name: Install dependencies
-      run: brew install cmake googletest
+  - name: Install dependencies
+    run: brew install cmake googletest
   
-    - name: Configure CMake
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+  - name: Configure CMake
+    run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
   
-    - name: Build
-      run: cmake --build build --config Release
+  - name: Build
+    run: cmake --build build --config Release
   
-    - name: Create package
-      working-directory: ${{github.workspace}}/build
-      run: cpack -G Bundle
+  - name: Create package
+    working-directory: ${{github.workspace}}/build
+    run: cpack -G Bundle
   
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-package
-        path: build/*.dmg
+  - name: Upload artifact
+    uses: actions/upload-artifact@v4
+    with:
+      name: macos-package
+      path: build/*.dmg
 
   create-release:
     needs: [linux-build, windows-build, macos-build]
