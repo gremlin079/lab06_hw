@@ -71,25 +71,26 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Install dependencies
+  
+    - name: Check required files
       run: |
-        brew install cmake googletest
-        cd /opt/homebrew/include/gtest || cd /usr/local/include/gtest
-        sudo cmake CMakeLists.txt || true
-        sudo make || true
-        sudo cp *.a /opt/homebrew/lib/ || sudo cp *.a /usr/local/lib/ || true
-        
+        if [ ! -f "Info.plist" ]; then
+        echo "<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'><plist version='1.0'><dict><key>CFBundleExecutable</key><string>solver_app</string><key>CFBundleIdentifier</key><string>com.yourcompany.solver</string><key>CFBundleName</key><string>Solver</string><key>CFBundleVersion</key><string>1.0.0</string></dict></plist>" > Info.plist
+        fi
+  
+    - name: Install dependencies
+      run: brew install cmake googletest
+  
     - name: Configure CMake
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-      
+  
     - name: Build
-      run: cmake --build build --config Release --parallel 2
-      
+      run: cmake --build build --config Release
+  
     - name: Create package
       working-directory: ${{github.workspace}}/build
       run: cpack -G Bundle
-      
+  
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
