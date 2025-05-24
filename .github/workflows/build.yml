@@ -20,18 +20,29 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake g++ libgtest-dev rpm
+        sudo apt-get install -y cmake g++ libgtest-dev rpm dpkg-dev
+        
+    - name: Build GTest
+      run: |
+        cd /usr/src/gtest
+        sudo cmake CMakeLists.txt
+        sudo make
+        sudo cp *.a /usr/lib
         
     - name: Configure CMake
-      run: cmake -S . -B build -DCPACK_GENERATOR="DEB;RPM"
-    
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      
     - name: Build
-      run: cmake --build build
-    
-    - name: Create packages (DEB, RPM)
+      run: cmake --build build --config Release --parallel 2
+      
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure
+      
+    - name: Create packages
       working-directory: ${{github.workspace}}/build
-      run: cpack
-    
+      run: cpack -G DEB -G RPM
+      
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -44,24 +55,31 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install dependencies (CMake, NSIS)
+    - name: Install MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      
+    - name: Install dependencies
       run: choco install cmake nsis -y
     
     - name: Configure CMake
-      run: cmake -S . -B build -DCPACK_GENERATOR="NSIS"
-    
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      
     - name: Build
-      run: cmake --build build
-    
-    - name: Create MSI package
+      run: cmake --build build --config Release --parallel 2
+      
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure
+      
+    - name: Create package
       working-directory: ${{github.workspace}}/build
-      run: cpack
-    
-    - name: Upload MSI
+      run: cpack -G NSIS
+      
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-package
-        path: build/*.msi
+        path: build/*.exe
         if-no-files-found: error
 
   macos-build:
@@ -70,19 +88,28 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Install dependencies
-      run: brew install cmake googletest
-    
+      run: |
+        brew install cmake googletest
+        cd /usr/local/include/gtest
+        sudo cmake CMakeLists.txt
+        sudo make
+        sudo cp *.a /usr/local/lib
+        
     - name: Configure CMake
-      run: cmake -S . -B build -DCPACK_GENERATOR="Bundle"
-    
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      
     - name: Build
-      run: cmake --build build
-    
-    - name: Create DMG package
+      run: cmake --build build --config Release --parallel 2
+      
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure
+      
+    - name: Create package
       working-directory: ${{github.workspace}}/build
-      run: cpack
-    
-    - name: Upload DMG
+      run: cpack -G Bundle
+      
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-package
@@ -115,7 +142,7 @@ jobs:
         files: |
           artifacts/linux/*.deb
           artifacts/linux/*.rpm
-          artifacts/windows/*.msi
+          artifacts/windows/*.exe
           artifacts/macos/*.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
