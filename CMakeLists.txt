@@ -24,11 +24,11 @@ if(UNIX AND NOT APPLE)
     set(CPACK_RPM_PACKAGE_RELEASE 1)
     set(CPACK_RPM_PACKAGE_REQUIRES "libstdc++")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
-    install(TARGETS solver_app hello_world_app
+    install(TARGETS solver_application hello_world_application
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             COMPONENT applications)
     
-    install(TARGETS formatter formatter_ex solver
+    install(TARGETS formatter formatter_ex_lib solver_lib
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             COMPONENT libraries)
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
@@ -40,11 +40,11 @@ if(WIN32)
     set(CPACK_NSIS_MODIFY_PATH ON)
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     
-    install(TARGETS solver_app hello_world_app
+    install(TARGETS solver_application hello_world_application
             RUNTIME DESTINATION bin
             COMPONENT applications)
             
-    install(TARGETS formatter formatter_ex solver
+    install(TARGETS formatter formatter_ex_lib solver_lib
             LIBRARY DESTINATION lib
             COMPONENT libraries)
 endif()
@@ -55,11 +55,11 @@ if(APPLE)
     set(CPACK_BUNDLE_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
     
-    install(TARGETS solver_app hello_world_app
+    install(TARGETS solver_application hello_world_application
             BUNDLE DESTINATION Applications
             COMPONENT applications)
             
-    install(TARGETS formatter formatter_ex solver
+    install(TARGETS formatter formatter_ex_lib solver_lib
             LIBRARY DESTINATION lib
             COMPONENT libraries)
 endif()
