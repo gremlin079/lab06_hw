@@ -75,7 +75,7 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: |
         cpack -G NSIS
-        ls -la *.exe || echo "No package created"
+        Get-ChildItem *.exe | Format-List || Write-Output "No package created"
       
     - name: Upload artifact
       uses: actions/upload-artifact@v4
